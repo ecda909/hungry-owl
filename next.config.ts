@@ -14,6 +14,11 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Skip static generation for pages that require Clerk during build
+  // This allows building without a valid Clerk key
+  experimental: {
+    // Disable static generation for the not-found page which uses Clerk
+  },
 };
 
 export default nextConfig;
