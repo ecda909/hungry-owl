@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       name: ing.name,
       category: ing.category,
       commonUnits: ing.commonUnits,
-      emoji: ing.emoji,
+      emoji: ing.emoji || "🍽️",
       source: 'local' as const,
     }));
 

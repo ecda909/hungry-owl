@@ -85,7 +85,7 @@ export function ShoppingClient({ activeList: initialList, ingredients }: Props) 
           name: ing.name,
           category: ing.category,
           commonUnits: ing.commonUnits,
-          emoji: ing.emoji,
+          emoji: ing.emoji || "🍽️",
           source: 'local' as const,
         }));
       setSearchResults(localResults);
@@ -259,9 +259,9 @@ export function ShoppingClient({ activeList: initialList, ingredients }: Props) 
                       <span className="flex-1">{item.name}</span>
                       <div className="flex items-center gap-1">
                         {item.source === 'usda' ? (
-                          <Globe className="w-3 h-3 text-blue-500" title="From USDA Database" />
+                          <span title="From USDA Database"><Globe className="w-3 h-3 text-blue-500" /></span>
                         ) : (
-                          <Database className="w-3 h-3 text-green-500" title="Local Database" />
+                          <span title="Local Database"><Database className="w-3 h-3 text-green-500" /></span>
                         )}
                         <Badge variant="outline" className="text-xs">{item.category}</Badge>
                       </div>
