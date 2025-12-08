@@ -12,7 +12,11 @@ RUN apk add --no-cache libc6-compat openssl
 FROM base AS deps
 WORKDIR /app
 
+# Copy package files and prisma schema (needed for postinstall)
 COPY package.json package-lock.json* ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+
 RUN npm ci && npm cache clean --force
 
 # ============================================
