@@ -1,37 +1,6 @@
+# Docker Compose for local development
+# Database is now hosted on Prisma Cloud - no local postgres needed
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: hungry-owl-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-hungry_owl}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hungry_owl_secret}
-      POSTGRES_DB: ${POSTGRES_DB:-hungry_owl_db}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "${POSTGRES_PORT:-5433}:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hungry_owl}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: hungry-owl-redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    ports:
-      - "${REDIS_PORT:-6380}:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   app:
     build:
       context: .
@@ -39,24 +8,15 @@ services:
     container_name: hungry-owl-app
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-hungry_owl}:${POSTGRES_PASSWORD:-hungry_owl_secret}@postgres:5432/${POSTGRES_DB:-hungry_owl_db}
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: ${DATABASE_URL}
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      USDA_API_KEY: ${USDA_API_KEY}
     ports:
       - "${APP_PORT:-3000}:3000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     volumes:
       - .:/app
       - /app/node_modules
       - /app/.next
-
-volumes:
-  postgres_data:
-  redis_data:
 
