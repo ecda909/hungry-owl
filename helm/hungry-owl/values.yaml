@@ -1,0 +1,109 @@
+# Default values for hungry-owl
+replicaCount: 2
+
+image:
+  repository: us-east4-docker.pkg.dev/blankcut/dream-team-repository/hungry-owl
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: hungryowl.blankcut.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: hungry-owl-tls
+      hosts:
+        - hungryowl.blankcut.com
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Environment variables (non-sensitive)
+env:
+  NODE_ENV: production
+  NEXT_TELEMETRY_DISABLED: "1"
+
+# External secrets configuration
+externalSecrets:
+  enabled: true
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  # Keys in AWS Secrets Manager
+  secrets:
+    - key: hungry-owl/production
+      property: DATABASE_URL
+      name: DATABASE_URL
+    - key: hungry-owl/production
+      property: CLERK_SECRET_KEY
+      name: CLERK_SECRET_KEY
+    - key: hungry-owl/production
+      property: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+      name: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+    - key: hungry-owl/production
+      property: OPENAI_API_KEY
+      name: OPENAI_API_KEY
+    - key: hungry-owl/production
+      property: USDA_API_KEY
+      name: USDA_API_KEY
+
+# Liveness and readiness probes
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+

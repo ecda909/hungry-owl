@@ -1,0 +1,19 @@
+apiVersion: v2
+name: hungry-owl
+description: AI-powered recipe generation app that helps you cook with what you have
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - recipes
+  - cooking
+  - ai
+  - nextjs
+  - meal-planning
+maintainers:
+  - name: Eder Mazariegos
+    email: ecda909@gmail.com
+home: https://github.com/ecda909/hungry-owl
+sources:
+  - https://github.com/ecda909/hungry-owl
+

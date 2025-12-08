@@ -1,0 +1,302 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==================== USER & PROFILE ====================
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Onboarding status
+  onboardingComplete Boolean @default(false)
+
+  // Relations
+  profile        UserProfile?
+  inventory      UserInventory[]
+  pantryStaples  PantryStaple[]
+  recipes        Recipe[]
+  recipeHistory  UserRecipeHistory[]
+  shoppingLists  ShoppingList[]
+  savedRecipes   SavedRecipe[]
+
+  @@index([clerkId])
+}
+
+model UserProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Household info
+  householdSize Int      @default(1)
+  householdAges String[] @default([]) // Array of age ranges
+
+  // Dietary profile (stored as JSON for flexibility)
+  allergies          String[] @default([])
+  restrictions       String[] @default([]) // vegetarian, vegan, kosher, halal, etc.
+  restrictionDetails Json     @default("{}") // {restriction: {strict: bool, avoidFoods: []}}
+  dislikes           String[] @default([])
+
+  // Cuisine preferences (JSON object with ratings)
+  cuisinePreferences Json @default("{}")
+
+  // Kitchen capabilities
+  cookware   String[] @default([])
+  appliances String[] @default([])
+
+  // Skill level: beginner, intermediate, advanced
+  skillLevel String @default("beginner")
+
+  // Shopping habits
+  preferredStores   String[] @default([])
+  shoppingFrequency String   @default("weekly") // daily, weekly, biweekly, monthly
+  budgetPreference  String   @default("moderate") // budget, moderate, premium
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==================== INGREDIENTS ====================
+
+model Ingredient {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  aliases     String[] @default([])
+  category    IngredientCategory
+  commonUnits String[] @default([])
+  shelfLife   Int? // in days
+  emoji       String?
+  usdaFdcId   Int?     @unique // USDA FoodData Central ID
+
+  // Substitution info (stored as JSON)
+  substitutes Json @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  inventoryItems UserInventory[]
+  pantryStaples  PantryStaple[]
+
+  @@index([name])
+  @@index([category])
+}
+
+enum IngredientCategory {
+  PRODUCE
+  PROTEIN
+  DAIRY
+  PANTRY
+  FROZEN
+  BEVERAGES
+  SPICES
+  GRAINS
+  OTHER
+}
+
+// ==================== USER INVENTORY ====================
+
+model UserInventory {
+  id           String         @id @default(cuid())
+  userId       String
+  ingredientId String
+  quantity     Float
+  unit         String
+  purchaseDate DateTime       @default(now())
+  expirationDate DateTime?
+  storageLocation StorageLocation @default(FRIDGE)
+  status       InventoryStatus @default(FRESH)
+  notes        String?
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, ingredientId, storageLocation])
+  @@index([userId])
+  @@index([expirationDate])
+  @@index([status])
+}
+
+enum StorageLocation {
+  FRIDGE
+  FREEZER
+  PANTRY
+}
+
+enum InventoryStatus {
+  FRESH
+  USE_SOON
+  EXPIRING
+  EXPIRED
+}
+
+// ==================== PANTRY STAPLES ====================
+
+model PantryStaple {
+  id           String  @id @default(cuid())
+  userId       String
+  ingredientId String
+  inStock      Boolean @default(true)
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, ingredientId])
+  @@index([userId])
+}
+
+
+// ==================== RECIPES ====================
+
+model Recipe {
+  id          String   @id @default(cuid())
+  userId      String?  // null for system/cached recipes
+
+  name        String
+  description String
+  heroEmoji   String   @default("🍽️")
+
+  // Recipe content (stored as JSON)
+  ingredients Json     // Array of {name, quantity, unit, optional}
+  steps       Json     // Array of {stepNumber, instruction, duration, tips}
+
+  // Time estimates (in minutes)
+  totalTime     Int
+  activeTime    Int
+
+  // Categorization
+  difficulty   RecipeDifficulty @default(INTERMEDIATE)
+  cuisineType  String
+  mealType     MealType @default(DINNER)
+
+  // Flags
+  isOnePot     Boolean @default(false)
+  isVegetarian Boolean @default(false)
+  isVegan      Boolean @default(false)
+
+  // Equipment needed
+  equipment    String[] @default([])
+
+  // Nutrition (estimated)
+  nutrition    Json @default("{}")
+
+  // Serving info
+  servings     Int @default(4)
+
+  // Cache metadata
+  generatedFor String?   // Context hash for cache matching
+  expiresAt    DateTime?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Relations
+  history      UserRecipeHistory[]
+  savedBy      SavedRecipe[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([cuisineType])
+  @@index([mealType])
+  @@index([difficulty])
+}
+
+enum RecipeDifficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+  DESSERT
+}
+
+// ==================== USER RECIPE HISTORY ====================
+
+model UserRecipeHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  recipeId  String
+
+  cookedAt  DateTime @default(now())
+  rating    Int?     // 1-5 stars
+  notes     String?
+  wouldMakeAgain Boolean?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([recipeId])
+}
+
+// ==================== SAVED RECIPES ====================
+
+model SavedRecipe {
+  id        String   @id @default(cuid())
+  userId    String
+  recipeId  String
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, recipeId])
+  @@index([userId])
+}
+
+// ==================== SHOPPING LISTS ====================
+
+model ShoppingList {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String   @default("Shopping List")
+
+  // Items stored as JSON array
+  // [{name, quantity, unit, category, checked, recipeId?}]
+  items     Json     @default("[]")
+
+  // Store preference
+  store     String?
+
+  // Status
+  isActive  Boolean  @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isActive])
+}

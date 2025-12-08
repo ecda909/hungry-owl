@@ -1,0 +1,3 @@
+[ ] - When a user selects a "Dietary Restrictions" like paleo, we need to ask them whether they are participating in the diet strcitly or not. If not, we should ask them to select which foods they want to avoid.
+[ ] - When I type in a custom input in the onboarding form, it doesn't add the item to the list when I clicked "Add".
+[ ] - When I clicked "Complete Setup", I got the following error: "Something went wrong. Please try again."

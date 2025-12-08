@@ -1,0 +1,34 @@
+🦉 Hungry Owl has been deployed!
+
+{{- if .Values.ingress.enabled }}
+Your application is available at:
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  https://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+Get the application URL by running:
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "hungry-owl.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+Get the application URL by running:
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+  kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "hungry-owl.fullname" . }}
+{{- else if contains "ClusterIP" .Values.service.type }}
+Get the application URL by running:
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "hungry-owl.fullname" . }} 3000:{{ .Values.service.port }}
+  Then visit: http://localhost:3000
+{{- end }}
+
+📋 Quick Commands:
+  # Check pod status
+  kubectl get pods -l "app.kubernetes.io/name={{ include "hungry-owl.name" . }}" -n {{ .Release.Namespace }}
+
+  # View logs
+  kubectl logs -l "app.kubernetes.io/name={{ include "hungry-owl.name" . }}" -n {{ .Release.Namespace }} -f
+
+  # Check external secrets
+  kubectl get externalsecrets -n {{ .Release.Namespace }}
+

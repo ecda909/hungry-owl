@@ -1,0 +1,157 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+env:
+  GCP_REGION: us-east4
+  GCP_PROJECT_ID: blankcut
+  ARTIFACT_REGISTRY: us-east4-docker.pkg.dev
+  REPOSITORY: dream-team-repository
+  IMAGE_NAME: hungry-owl
+  REGISTRY_URL: us-east4-docker.pkg.dev/blankcut/dream-team-repository
+
+jobs:
+  build-and-push:
+    name: Build and Push ARM64 Image
+    runs-on: ubuntu-latest
+    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      image_tag: ${{ steps.meta.outputs.version_tag }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            # Get latest tag or default to 0.0.0
+            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+            LATEST_VERSION=${LATEST_TAG#v}
+            
+            # Parse version components
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_VERSION"
+            
+            # Bump version based on input or default to patch
+            BUMP_TYPE="${{ github.event.inputs.version_bump || 'patch' }}"
+            case $BUMP_TYPE in
+              major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+              minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+              patch) PATCH=$((PATCH + 1)) ;;
+            esac
+            
+            VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          fi
+          
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "📦 Version: ${VERSION}"
+      
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/arm64
+      
+      - name: Log in to Google Artifact Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ARTIFACT_REGISTRY }}
+          username: _json_key
+          password: ${{ secrets.GCP_SA_KEY }}
+      
+      - name: Extract metadata
+        id: meta
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          
+          echo "version_tag=${VERSION}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "image_base=${{ env.REGISTRY_URL }}/${{ env.IMAGE_NAME }}" >> $GITHUB_OUTPUT
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image_base }}:latest
+            ${{ steps.meta.outputs.image_base }}:${{ steps.meta.outputs.version_tag }}
+            ${{ steps.meta.outputs.image_base }}:${{ steps.meta.outputs.short_sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      
+      - name: Create and push git tag
+        if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git tag -a "v${{ steps.version.outputs.version }}" -m "Release v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
+      
+      - name: Image digest
+        run: |
+          echo "✅ Image pushed successfully!"
+          echo ""
+          echo "📦 Image: ${{ steps.meta.outputs.image_base }}"
+          echo ""
+          echo "🏷️  Tags:"
+          echo "  - latest"
+          echo "  - v${{ steps.meta.outputs.version_tag }}"
+          echo "  - ${{ steps.meta.outputs.short_sha }}"
+      
+      - name: Create deployment summary
+        run: |
+          echo "## 🦉 Hungry Owl Docker Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Success" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Repository:** \`${{ steps.meta.outputs.image_base }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo "- \`latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ steps.meta.outputs.version_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ steps.meta.outputs.short_sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Platform:** \`linux/arm64\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Pull Command" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ steps.meta.outputs.image_base }}:${{ steps.meta.outputs.version_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
