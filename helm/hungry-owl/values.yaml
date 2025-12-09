@@ -26,7 +26,7 @@ service:
 
 ingress:
   enabled: true
-  className: "traefik"
+  className: "traefik-traefik"
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
@@ -63,6 +63,13 @@ affinity: {}
 env:
   NODE_ENV: production
   NEXT_TELEMETRY_DISABLED: "1"
+  # Clerk URLs
+  CLERK_SIGN_IN_URL: /sign-in
+  CLERK_SIGN_UP_URL: /sign-up
+  NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+  NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+  NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: /dashboard
+  NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: /onboarding
 
 # External secrets configuration
 externalSecrets:
@@ -82,8 +89,8 @@ externalSecrets:
       property: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
       name: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
     - key: hungry-owl/production
-      property: OPENAI_API_KEY
-      name: OPENAI_API_KEY
+      property: ANTHROPIC_API_KEY
+      name: ANTHROPIC_API_KEY
     - key: hungry-owl/production
       property: USDA_API_KEY
       name: USDA_API_KEY
@@ -106,4 +113,27 @@ readinessProbe:
   periodSeconds: 5
   timeoutSeconds: 3
   failureThreshold: 3
+
+# Redis configuration
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 6379
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  persistence:
+    enabled: false
+    # If you want persistence, uncomment and configure:
+    # storageClass: ""
+    # size: 1Gi
 

@@ -52,6 +52,10 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+            {{- if .Values.redis.enabled }}
+            - name: REDIS_URL
+              value: "redis://{{ include "hungry-owl.fullname" . }}-redis:{{ .Values.redis.service.port }}"
+            {{- end }}
           envFrom:
             - secretRef:
                 name: {{ include "hungry-owl.fullname" . }}-secrets

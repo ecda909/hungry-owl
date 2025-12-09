@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.clerk.com",
       },
+      {
+        protocol: "https",
+        hostname: "clerk.blankcut.com",
+      },
     ],
   },
   // Skip static generation for pages that require Clerk during build
