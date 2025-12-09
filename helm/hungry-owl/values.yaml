@@ -63,6 +63,9 @@ affinity: {}
 env:
   NODE_ENV: production
   NEXT_TELEMETRY_DISABLED: "1"
+  # Clerk Custom Domain Configuration
+  CLERK_DOMAIN: clerk.blankcut.com
+  CLERK_PROXY_URL: https://clerk.blankcut.com
   # Clerk URLs
   CLERK_SIGN_IN_URL: /sign-in
   CLERK_SIGN_UP_URL: /sign-up
