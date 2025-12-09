@@ -5,6 +5,7 @@ const isPublicRoute = createRouteMatcher([
   "/",
   "/sign-in(.*)",
   "/sign-up(.*)",
+  "/api/health(.*)", // Health check for k8s probes
   "/api/webhooks(.*)",
   "/api/ingredients/search(.*)", // Public ingredient search API
 ]);
