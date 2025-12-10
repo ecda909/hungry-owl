@@ -78,7 +78,7 @@ env:
 externalSecrets:
   enabled: true
   secretStoreRef:
-    name: aws-secrets-manager
+    name: aws-secretmanager
     kind: ClusterSecretStore
   # Keys in AWS Secrets Manager
   secrets:
