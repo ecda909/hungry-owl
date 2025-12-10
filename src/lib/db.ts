@@ -1,4 +1,6 @@
 import { PrismaClient } from '@/generated/prisma';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -21,8 +23,20 @@ function createPrismaClient() {
     throw new Error('DATABASE_URL is not set');
   }
 
-  // Use standard Prisma client with explicit log option
+  // Parse the connection string to extract SSL mode
+  const url = new URL(connectionString);
+  const sslMode = url.searchParams.get('sslmode');
+
+  // Create pg Pool with proper SSL configuration for Prisma Cloud
+  const pool = new Pool({
+    connectionString: connectionString,
+    ssl: sslMode === 'require' ? { rejectUnauthorized: false } : false,
+  });
+
+  const adapter = new PrismaPg(pool);
+
   return new PrismaClient({
+    adapter,
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   });
 }
