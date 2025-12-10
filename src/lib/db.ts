@@ -23,14 +23,21 @@ function createPrismaClient() {
     throw new Error('DATABASE_URL is not set');
   }
 
-  // Parse the connection string to extract SSL mode
+  // Parse the connection string to extract SSL mode and remove query params
   const url = new URL(connectionString);
   const sslMode = url.searchParams.get('sslmode');
 
+  // Remove query parameters from the connection string for pg Pool
+  // pg Pool doesn't understand sslmode and pool query params
+  const cleanConnectionString = `${url.protocol}//${url.username}:${url.password}@${url.host}${url.pathname}`;
+
   // Create pg Pool with proper SSL configuration for Prisma Cloud
   const pool = new Pool({
-    connectionString: connectionString,
+    connectionString: cleanConnectionString,
     ssl: sslMode === 'require' ? { rejectUnauthorized: false } : false,
+    max: 10, // Connection pool size
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
   });
 
   const adapter = new PrismaPg(pool);
