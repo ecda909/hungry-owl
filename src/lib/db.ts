@@ -1,6 +1,4 @@
 import { PrismaClient } from '@/generated/prisma';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -23,10 +21,14 @@ function createPrismaClient() {
     throw new Error('DATABASE_URL is not set');
   }
 
-  const pool = new Pool({ connectionString });
-  const adapter = new PrismaPg(pool);
-
-  return new PrismaClient({ adapter });
+  // Use standard Prisma client without adapter for Prisma Cloud
+  return new PrismaClient({
+    datasources: {
+      db: {
+        url: connectionString,
+      },
+    },
+  });
 }
 
 // Lazy initialization - only create client when first accessed
