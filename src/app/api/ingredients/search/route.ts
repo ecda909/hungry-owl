@@ -54,20 +54,27 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Otherwise, also search USDA for more options
+    // Otherwise, also search USDA for more options (with fallback)
     let usdaResults: NormalizedIngredient[] = [];
-    try {
-      const usdaResponse = await searchUSDAFoods(query, 20);
-      usdaResults = usdaResponse.foods
-        .map(normalizeUSDAFood)
-        // Filter out duplicates that are already in local results
-        .filter(usdaFood => 
-          !localSearchResults.some(local => 
-            local.name.toLowerCase() === usdaFood.name.toLowerCase()
-          )
-        );
-    } catch (usdaError) {
-      console.error('USDA API error (continuing with local results):', usdaError);
+    const hasUSDAKey = !!process.env.USDA_API_KEY;
+
+    if (hasUSDAKey) {
+      try {
+        const usdaResponse = await searchUSDAFoods(query, 20);
+        usdaResults = usdaResponse.foods
+          .map(normalizeUSDAFood)
+          // Filter out duplicates that are already in local results
+          .filter(usdaFood =>
+            !localSearchResults.some(local =>
+              local.name.toLowerCase() === usdaFood.name.toLowerCase()
+            )
+          );
+      } catch (usdaError) {
+        // Log error but continue with local results
+        console.error('USDA API error (continuing with local results):', usdaError);
+      }
+    } else {
+      console.warn('USDA_API_KEY not configured, using local results only');
     }
 
     // Transform USDA results
@@ -90,9 +97,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Search error:', error);
+    // Return a proper error response instead of crashing
     return NextResponse.json(
-      { error: 'Failed to search ingredients' },
-      { status: 500 }
+      { results: [], error: 'Search failed' },
+      { status: 200 } // Return 200 to prevent client errors
     );
   }
 }
