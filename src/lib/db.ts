@@ -21,14 +21,8 @@ function createPrismaClient() {
     throw new Error('DATABASE_URL is not set');
   }
 
-  // Use standard Prisma client without adapter for Prisma Cloud
-  return new PrismaClient({
-    datasources: {
-      db: {
-        url: connectionString,
-      },
-    },
-  });
+  // Use standard Prisma client - it will automatically use DATABASE_URL env var
+  return new PrismaClient();
 }
 
 // Lazy initialization - only create client when first accessed
