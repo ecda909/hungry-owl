@@ -59,95 +59,105 @@ export async function updateUserProfile(data: {
   shoppingFrequency?: string;
   budgetPreference?: string;
 }) {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Unauthorized");
+  try {
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
 
-  // Ensure user exists first (create if needed)
-  let user = await prisma.user.findUnique({
-    where: { clerkId: userId },
-  });
+    // Ensure user exists first (create if needed)
+    let user = await prisma.user.findUnique({
+      where: { clerkId: userId },
+    });
 
-  if (!user) {
-    // Create the user if they don't exist yet
-    const clerkUser = await currentUser();
-    if (!clerkUser) throw new Error("Cannot get current user from Clerk");
+    if (!user) {
+      // Create the user if they don't exist yet
+      const clerkUser = await currentUser();
+      if (!clerkUser) throw new Error("Cannot get current user from Clerk");
 
-    user = await prisma.user.create({
-      data: {
-        clerkId: userId,
-        email: clerkUser.emailAddresses[0]?.emailAddress ?? "",
-        firstName: clerkUser.firstName,
-        lastName: clerkUser.lastName,
-        imageUrl: clerkUser.imageUrl,
+      user = await prisma.user.create({
+        data: {
+          clerkId: userId,
+          email: clerkUser.emailAddresses[0]?.emailAddress ?? "",
+          firstName: clerkUser.firstName,
+          lastName: clerkUser.lastName,
+          imageUrl: clerkUser.imageUrl,
+        },
+      });
+    }
+
+    // Prepare data with proper JSON serialization
+    const { cuisinePreferences, restrictionDetails, ...restData } = data;
+
+    const profile = await prisma.userProfile.upsert({
+      where: { userId: user.id },
+      update: {
+        ...restData,
+        cuisinePreferences: cuisinePreferences
+          ? JSON.stringify(cuisinePreferences)
+          : undefined,
+        restrictionDetails: restrictionDetails
+          ? JSON.stringify(restrictionDetails)
+          : undefined,
+      },
+      create: {
+        userId: user.id,
+        ...restData,
+        cuisinePreferences: cuisinePreferences
+          ? JSON.stringify(cuisinePreferences)
+          : "{}",
+        restrictionDetails: restrictionDetails
+          ? JSON.stringify(restrictionDetails)
+          : "{}",
       },
     });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/onboarding");
+    revalidatePath("/settings");
+
+    return profile;
+  } catch (error) {
+    console.error("Error in updateUserProfile:", error);
+    throw error;
   }
-
-  // Prepare data with proper JSON serialization
-  const { cuisinePreferences, restrictionDetails, ...restData } = data;
-
-  const profile = await prisma.userProfile.upsert({
-    where: { userId: user.id },
-    update: {
-      ...restData,
-      cuisinePreferences: cuisinePreferences
-        ? JSON.stringify(cuisinePreferences)
-        : undefined,
-      restrictionDetails: restrictionDetails
-        ? JSON.stringify(restrictionDetails)
-        : undefined,
-    },
-    create: {
-      userId: user.id,
-      ...restData,
-      cuisinePreferences: cuisinePreferences
-        ? JSON.stringify(cuisinePreferences)
-        : "{}",
-      restrictionDetails: restrictionDetails
-        ? JSON.stringify(restrictionDetails)
-        : "{}",
-    },
-  });
-
-  revalidatePath("/dashboard");
-  revalidatePath("/onboarding");
-  revalidatePath("/settings");
-
-  return profile;
 }
 
 export async function completeOnboarding() {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Unauthorized");
+  try {
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
 
-  // First check if user exists, create if not
-  let user = await prisma.user.findUnique({
-    where: { clerkId: userId },
-  });
-
-  if (!user) {
-    const clerkUser = await currentUser();
-    if (!clerkUser) throw new Error("Cannot get current user from Clerk");
-
-    user = await prisma.user.create({
-      data: {
-        clerkId: userId,
-        email: clerkUser.emailAddresses[0]?.emailAddress ?? "",
-        firstName: clerkUser.firstName,
-        lastName: clerkUser.lastName,
-        imageUrl: clerkUser.imageUrl,
-        onboardingComplete: true,
-      },
-    });
-  } else {
-    user = await prisma.user.update({
+    // First check if user exists, create if not
+    let user = await prisma.user.findUnique({
       where: { clerkId: userId },
-      data: { onboardingComplete: true },
     });
-  }
 
-  revalidatePath("/dashboard");
-  return user;
+    if (!user) {
+      const clerkUser = await currentUser();
+      if (!clerkUser) throw new Error("Cannot get current user from Clerk");
+
+      user = await prisma.user.create({
+        data: {
+          clerkId: userId,
+          email: clerkUser.emailAddresses[0]?.emailAddress ?? "",
+          firstName: clerkUser.firstName,
+          lastName: clerkUser.lastName,
+          imageUrl: clerkUser.imageUrl,
+          onboardingComplete: true,
+        },
+      });
+    } else {
+      user = await prisma.user.update({
+        where: { clerkId: userId },
+        data: { onboardingComplete: true },
+      });
+    }
+
+    revalidatePath("/dashboard");
+    return user;
+  } catch (error) {
+    console.error("Error in completeOnboarding:", error);
+    throw error;
+  }
 }
 
 export async function isOnboardingComplete() {
