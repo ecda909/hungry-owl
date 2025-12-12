@@ -33,14 +33,14 @@ export function formatRelativeDate(date: Date): string {
 
 export function getExpirationStatus(expirationDate: Date | null): "fresh" | "use_soon" | "expiring" | "expired" {
   if (!expirationDate) return "fresh";
-  
+
   const now = new Date();
   const diff = expirationDate.getTime() - now.getTime();
   const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
 
   if (days < 0) return "expired";
-  if (days <= 2) return "expiring";
-  if (days <= 5) return "use_soon";
+  if (days <= 1) return "expiring";
+  if (days <= 3) return "use_soon";
   return "fresh";
 }
 

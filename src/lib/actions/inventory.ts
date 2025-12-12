@@ -158,8 +158,8 @@ function getStatusFromDate(date?: Date): InventoryStatus {
   const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
 
   if (days < 0) return "EXPIRED";
-  if (days <= 2) return "EXPIRING";
-  if (days <= 5) return "USE_SOON";
+  if (days <= 1) return "EXPIRING";
+  if (days <= 3) return "USE_SOON";
   return "FRESH";
 }
 
