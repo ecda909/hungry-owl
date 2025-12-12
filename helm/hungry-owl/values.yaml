@@ -4,7 +4,9 @@ replicaCount: 2
 image:
   repository: us-east4-docker.pkg.dev/blankcut/dream-team-repository/hungry-owl
   pullPolicy: IfNotPresent
-  tag: "latest"
+  # ArgoCD Image Updater will automatically update this tag when new versions are pushed
+  # The workflow pushes semantic versions (e.g., 0.0.14) and git commit SHAs
+  tag: "0.0.1"
 
 imagePullSecrets: []
 nameOverride: ""
